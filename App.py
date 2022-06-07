@@ -7,7 +7,7 @@ import plotly.express as px
 
 st.set_page_config(page_title='Whatsapp Chat Analyser',page_icon = 'icon.png',layout="wide")
 st.sidebar.title("Whatsapp Analyser")
-
+st.sidebar.caption('Note: Make sure to upload text file excluding media')
 uploaded_file = st.sidebar.file_uploader("Choose a file")
 
 if uploaded_file is not None:
@@ -17,7 +17,10 @@ if uploaded_file is not None:
      df = p.preprocessor(data)
      
      users = df['users'].unique().tolist()
-     users.remove('Notifications')
+     try:
+          users.remove('Notifications')
+     except ValueError:
+          pass
      users.append('All')
      users.sort()
      user = st.sidebar.selectbox('Show analysis of',users)

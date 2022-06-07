@@ -7,3 +7,4 @@ clean-text
 pandas
 emoji
 plotly
+numpy

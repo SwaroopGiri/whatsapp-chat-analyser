@@ -3,6 +3,7 @@ from wordcloud import WordCloud
 from collections import Counter
 from cleantext import clean
 import pandas as pd
+import numpy as np
 import emoji
 extractor = URLExtract()
 
@@ -12,8 +13,7 @@ def fetch_count(user, df):
         
     count = df.shape[0]
     
-    media = df[df['messages'] == '<Media omitted>'].shape[0]
-    
+    media = df[df['messages'].str.contains('omitted')].shape[0]
 
     links = []
     for message in df['messages']:
@@ -38,7 +38,9 @@ def create_wordcloud(user, df):
     f = open('stop_words.txt', 'r')
     stop_words = f.read()
         
-    temp = df[df['messages']!='<Media omitted>']
+    temp = df[~df['messages'].str.contains('omitted')]
+    temp = temp[~temp['messages'].str.contains('This message was deleted.')]
+    temp = temp[~temp['messages'].str.contains('You deleted this message.')]
     temp = temp[temp['users'] != 'Notifications']
     
     links = []
@@ -53,14 +55,13 @@ def create_wordcloud(user, df):
         return ' '.join(words)
     
     def remove_links(message):
-        if message in links:
-            return ''
-        else:
-            return message   
+        if any(link in message for link in links):
+            return np.nan
+        return message
     
     cloud = WordCloud(width=500, height=500, min_font_size=10, background_color='white')
-    temp['messages'] = temp['messages'].apply(remove_words)
-    temp['messages'] = temp['messages'][temp['messages'].apply(remove_links) != '']
+    temp['messages'] = temp['messages'].apply(remove_links)
+    temp['messages'] = temp['messages'].dropna().apply(remove_words)
     cloud_df = cloud.generate(temp['messages'].str.cat(sep=' '))
     return cloud_df
 
@@ -72,7 +73,9 @@ def common_words(user, df):
     if user != 'All':
         df = df[df['users'] == user]
         
-    temp = df[df['messages']!='<Media omitted>']
+    temp = df[~df['messages'].str.contains('omitted')]
+    temp = temp[~temp['messages'].str.contains('This message was deleted.')]
+    temp = temp[~temp['messages'].str.contains('You deleted this message.')]
     temp = temp[temp['users'] != 'Notifications']
     
     words = []

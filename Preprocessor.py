@@ -2,13 +2,7 @@ import pandas as pd
 import re
 
 def preprocessor(data):
-    dformat = 12
-    pattern = re.compile('\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}\s[aApP][Mm]\s-\s')
-    pattern24 = re.compile('\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}\s-\s')
-    if bool(pattern24.match(data)):
-        pattern = pattern24.pattern
-        dformat = 24
-        del(pattern24)
+    pattern, formatstring, timeformat, platform = validate_OS(data)
     messages = re.split(pattern, data)[1:]
     dates = re.findall(pattern, data)
     df = pd.DataFrame({'user_messages':messages, 'dates':dates})
@@ -27,12 +21,12 @@ def preprocessor(data):
     df['users'] = users
     df['messages'] = messages
     df.drop(columns='user_messages', inplace=True)
-    df.head()
-    formatstring = validate_formatstring(df, '%d/%m/%Y, %H:%M - ')   
-    if dformat == 12:
-        formatstring = validate_formatstring(df, '%d/%m/%y, %I:%M %p - ')
+    if platform == 'iOS': 
+        df['dates'] = df['dates'].str.replace('[', '')
+        df['dates'] = df['dates'].str.replace(']', '')    
+    if timeformat == 12:
         df['dates'] = df['dates'].str.replace('am', 'AM').str.replace('pm', 'PM')
-        
+    formatstring = validate_formatstring(df, formatstring)
     df['dates'] = pd.to_datetime(df['dates'], format=formatstring)
     df['year'] = df['dates'].dt.year
     df['month_num'] = df['dates'].dt.month
@@ -66,3 +60,29 @@ def validate_formatstring(df, formatstring):
     except ValueError:
         formatstring = formatstring.replace('%d/%m', '%m/%d')
     return formatstring
+
+def validate_OS(data):   
+    pattern = re.compile('\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}\s[aApP][Mm]\s-\s')
+    pattern_ios = re.compile('\[\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}:\d{2}\s[aApP][Mm]\]\s')
+    pattern_ios_24h = re.compile('\[\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}:\d{2}\]\s')
+    pattern24h = re.compile('\d{1,2}/\d{1,2}/\d{2,4},\s\d{1,2}:\d{2}\s-\s')
+    formatstring = '%d/%m/%y, %I:%M %p - '
+    formatstring_ios = '%d/%m/%y, %I:%M:%S %p '
+    formatstring24h = '%d/%m/%Y, %H:%M - '
+    formatstring_ios_24h = '%d/%m/%Y, %H:%M:%S '
+    timeformat = 12
+    platform = 'Android'
+    if bool(pattern_ios.match(data)):
+        pattern = pattern_ios.pattern
+        formatstring = formatstring_ios
+        platform = 'iOS'
+    elif bool(pattern24h.match(data)):
+        pattern = pattern24h.pattern
+        formatstring = formatstring24h
+        timeformat = 24
+    elif bool(pattern_ios_24h.match(data)):
+        pattern = pattern_ios_24h.pattern
+        formatstring = formatstring_ios_24h
+        timeformat = 24
+        platform = 'iOS'
+    return pattern, formatstring, timeformat, platform
