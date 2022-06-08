@@ -58,7 +58,11 @@ def validate_formatstring(df, formatstring):
     try:
         pd.to_datetime(df['dates'], format=formatstring)
     except ValueError:
-        formatstring = formatstring.replace('%d/%m', '%m/%d')
+        try:
+            pd.to_datetime(df['dates'], format=formatstring.replace('%y', '%Y'))
+            formatstring = formatstring.replace('%y', '%Y')
+        except ValueError:
+            formatstring = formatstring.replace('%d/%m', '%m/%d')
     return formatstring
 
 def validate_OS(data):   
